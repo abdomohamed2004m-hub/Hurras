@@ -1,0 +1,37 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function validId(id) { return id.matches('^[1-9][0-9]{5}$'); }
+    function validName(n) { return n is string && n.size() >= 2 && n.size() <= 20; }
+
+    // ملف اللاعب: الاسم + رقم الحساب (6 أرقام) — لا يمكن تغيير الرقم أبدًا
+    match /users/{uid} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['name', 'playerId', 'createdAt'])
+        && request.resource.data.keys().hasAll(['name', 'playerId', 'createdAt'])
+        && validName(request.resource.data.name)
+        && request.resource.data.playerId is string
+        && validId(request.resource.data.playerId)
+        && request.resource.data.createdAt == request.time
+        && getAfter(/databases/$(database)/documents/playerIds/$(request.resource.data.playerId)).data.uid == uid;
+      allow update: if signedIn() && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name'])
+        && validName(request.resource.data.name);
+      allow delete: if false;
+    }
+
+    // سجل الأرقام: كل رقم يُحجز مرة واحدة فقط، ولكل حساب رقم واحد فقط
+    match /playerIds/{id} {
+      allow read: if signedIn();
+      allow create: if signedIn() && validId(id)
+        && request.resource.data.keys().hasOnly(['uid'])
+        && request.resource.data.uid == request.auth.uid
+        && !exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.playerId == id;
+      allow update, delete: if false;
+    }
+  }
+}

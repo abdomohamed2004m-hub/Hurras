@@ -1,0 +1,66 @@
+plugins {
+    id 'com.android.application'
+    id 'com.google.gms.google-services'
+}
+
+android {
+    namespace 'com.hurras.island'
+    compileSdk 34
+
+    defaultConfig {
+        minSdk 23
+        targetSdk 34
+        versionCode 13
+        versionName '1.13'
+    }
+
+    flavorDimensions 'edition'
+    productFlavors {
+        official {
+            dimension 'edition'
+            applicationId 'com.hurras.island'
+        }
+        dev {
+            dimension 'edition'
+            applicationId 'com.hurras.island.dev'
+        }
+    }
+
+    signingConfigs {
+        release {
+            storeFile file('release.p12')
+            storeType 'pkcs12'
+            storePassword 'hurras-build'
+            keyAlias 'hurras'
+            keyPassword 'hurras-build'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    applicationVariants.all { variant ->
+        variant.outputs.all {
+            def tag = variant.flavorName == 'dev' ? 'DEV-unlimited' : 'official'
+            outputFileName = "hurras-aljazeera-v1_13-${tag}.apk"
+        }
+    }
+}
+
+dependencies {
+    implementation platform('com.google.firebase:firebase-bom:33.7.0')
+    implementation 'com.google.firebase:firebase-auth'
+    implementation 'com.google.firebase:firebase-firestore'
+    implementation 'androidx.credentials:credentials:1.3.0'
+    implementation 'androidx.credentials:credentials-play-services-auth:1.3.0'
+    implementation 'com.google.android.libraries.identity.googleid:googleid:1.1.1'
+}
